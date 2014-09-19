@@ -1,3 +1,5 @@
 s$ubmmit first sample char device driver,we have a arch now,could found /dev/sample_dev_new now
 
 add tag
+
+add tag v1.5
