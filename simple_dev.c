@@ -10,6 +10,8 @@
 #include <linux/sched.h>
 #include <linux/kthread.h>
 
+#include <linux/workqueue.h>
+
 #ifndef SLEEP_MILLI_SEC
 #define SLEEP_MILLI_SEC(nMilliSec)\ 
 do{\
@@ -35,7 +37,8 @@ SIMPLE_DEV simple_dev;
 struct class *simple_class;
 struct device *simple_device;
 static struct task_struct *my_thread;
-
+static struct workqueue_struct *my_queue;
+static struct work_struct my_work;
 
 void tasklet_func(void *ptr)
 {
@@ -44,10 +47,17 @@ void tasklet_func(void *ptr)
 
 DECLARE_TASKLET(my_task,tasklet_func,&simple_dev);
 
+static void work_handler(struct work_struct *data)
+{
+	printk("<0>""enter work handler\n");
+}
+
+
 void my_timerfunc()
 {
 	printk("<0>""my timer\n");
-//	tasklet_schedule(&my_task);
+	//schedule_work(&my_work);
+	//tasklet_schedule(&my_task);
 }
 
 struct timer_list my_timer = TIMER_INITIALIZER(my_timerfunc,0,0);
@@ -118,7 +128,8 @@ static int test_thread(void *data)
 	{
 		printk("<0>""thread\n");
 		SLEEP_MILLI_SEC(2000);
-		tasklet_schedule(&my_task);
+		tasklet_schedule(&my_task);	
+		schedule_work(&my_work);
 	}
 }
 
@@ -156,6 +167,9 @@ static __init int simple_dev_init(void)
 		return -1;
 	}
 	wake_up_process(my_thread);
+	my_queue = create_singlethread_workqueue("my magic queue");
+	INIT_WORK(&my_work,work_handler);	
+
 	return 0;
 }
 
@@ -166,6 +180,7 @@ static __exit void simple_dev_exit(void)
 	unregister_chrdev_region(simple_dev.dev_num,1);
 	kfree(simple_dev.mmap_buf);
 	del_timer(&my_timer);
+	kthread_stop(my_thread);
 	printk("<0>""good bye\n");
 }
 
